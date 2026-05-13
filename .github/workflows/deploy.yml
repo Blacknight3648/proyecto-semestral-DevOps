@@ -90,7 +90,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           source: "docker-compose.prod.yml"
-          target: "/app"
+          target: "/home/ec2-user/app"
 
       - name: Deploy en EC2 pública
         uses: appleboy/ssh-action@v1
@@ -100,7 +100,8 @@ jobs:
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           envs: DOCKERHUB_USERNAME
           script: |
-            cd /app
+            mkdir -p /home/ec2-user/app
+            cd /home/ec2-user/app
             export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front_despacho:latest
             docker stop front_despacho || true
@@ -142,8 +143,9 @@ jobs:
             --instance-ids "${{ secrets.EC2_PRIVATE_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters commands='[
-              "aws s3 cp s3://${{ secrets.S3_TEMP_BUCKET }}/docker-compose.prod.yml /app/docker-compose.prod.yml",
-              "cd /app",
+              "mkdir -p /home/ec2-user/app",
+              "aws s3 cp s3://${{ secrets.S3_TEMP_BUCKET }}/docker-compose.prod.yml /home/ec2-user/app/docker-compose.prod.yml",
+              "cd /home/ec2-user/app",
               "echo DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }} > .env",
               "echo DB_ROOT_PASSWORD=${{ secrets.DB_ROOT_PASSWORD }} >> .env",
               "docker-compose -f docker-compose.prod.yml pull back-despachos back-ventas",
