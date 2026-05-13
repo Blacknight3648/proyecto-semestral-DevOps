@@ -30,10 +30,10 @@ services:
       - "${BACKEND_VENTAS_PORT}:8080"
     environment:
       - DB_ENDPOINT=db-ventas
-      - DB_PORT=3306
+      - DB_PORT=${DB_VENTAS_PORT}
       - DB_NAME=dev_db_ventas
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_USERNAME=${BD_USER}
+      - DB_PASSWORD=${BD_PASS}
     depends_on:
       - db-ventas
     networks:
@@ -46,10 +46,10 @@ services:
       - "${BACKEND_DESPACHOS_PORT}:8081"
     environment:
       - DB_ENDPOINT=db-despachos
-      - DB_PORT=3306
+      - DB_PORT=${DB_DESPACHOS_PORT}
       - DB_NAME=dev_db_despachos
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_USERNAME=${BD_USER}
+      - DB_PASSWORD=${BD_PASS}
     depends_on:
       - db-despachos
     networks:
