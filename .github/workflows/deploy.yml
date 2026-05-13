@@ -127,6 +127,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Copiar docker-compose via SSM (S3 intermedio)
@@ -143,8 +144,7 @@ jobs:
               "aws s3 cp s3://${{ secrets.S3_TEMP_BUCKET }}/docker-compose.prod.yml /app/docker-compose.prod.yml",
               "cd /app",
               "echo DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }} > .env",
-              "echo DB_USER=${{ secrets.DB_USER }} >> .env",
-              "echo DB_PASS=${{ secrets.DB_PASS }} >> .env",
+              "echo DB_ROOT_PASSWORD=${{ secrets.DB_ROOT_PASSWORD }} >> .env",
               "docker-compose -f docker-compose.prod.yml pull msv-despacho msv-ventas",
               "docker-compose -f docker-compose.prod.yml up -d"
             ]' \
