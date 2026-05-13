@@ -1,0 +1,18 @@
+@"
+# Dependency directories
+node_modules/
+jspm_packages/
+target/
+*.class
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.bak
+# OS files
+.DS_Store
+Thumbs.db
+# Environment variables
+.env
+.env.local
+"@ | Out-File -FilePath .gitignore -Encoding utf8
