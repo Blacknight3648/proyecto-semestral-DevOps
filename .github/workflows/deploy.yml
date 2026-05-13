@@ -2,7 +2,7 @@ name: Deploy a Produccion
 
 on:
   push:
-    branches: [produccion, Dev]
+    branches: [produccion, Dev, deploy]
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
