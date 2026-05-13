@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  db-ventas:
+    image: mysql:8.0
+    container_name: dev-db-ventas
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dev_db_ventas
+    ports:
+      - "3307:3306"
+    networks:
+      - dev-network
+
+  db-despachos:
+    image: mysql:8.0
+    container_name: dev-db-despachos
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dev_db_despachos
+    ports:
+      - "3308:3306"
+    networks:
+      - dev-network
+
+  back-ventas:
+    build:
+      context: ./back-Ventas_SpringBoot/Springboot-API-REST
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_ENDPOINT=db-ventas
+      - DB_PORT=3306
+      - DB_NAME=dev_db_ventas
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    depends_on:
+      - db-ventas
+    networks:
+      - dev-network
+
+  back-despachos:
+    build:
+      context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_ENDPOINT=db-despachos
+      - DB_PORT=3306
+      - DB_NAME=dev_db_despachos
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    depends_on:
+      - db-despachos
+    networks:
+      - dev-network
+
+  frontend:
+    build:
+      context: ./front_despacho
+    ports:
+      - "80:80"
+    depends_on:
+      - back-ventas
+      - back-despachos
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge

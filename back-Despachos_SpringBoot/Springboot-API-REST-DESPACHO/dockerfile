@@ -1,18 +1,19 @@
-FROM maven:3.9-eclipse-temurin-17-alpine AS build
+# Stage 1: Build
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
-
 COPY pom.xml .
-RUN mvn dependency:go-offline
-
 COPY src ./src
-WORKDIR /app
-
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN mvn clean package -DskipTests
+#--------------------------------
+# User spring doesn't exist by default
+# We create it to match the user in the build stage
+#--------------------------------
+RUN groupadd -r spring && useradd -r -g spring spring
 USER spring:spring
 
+# Stage 2: Run
+FROM eclipse-temurin:17-jre
+WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-
-ENV PORT=8080
-EXPOSE 8080
-
-ENTRYPOINT [ "java", "-jar", "/app.jar" ]
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "app.jar"]
