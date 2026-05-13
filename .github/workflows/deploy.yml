@@ -2,7 +2,7 @@ name: Deploy a Produccion
 
 on:
   push:
-    branches: [produccion]
+    branches: [produccion, Dev]
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -24,9 +24,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
-          context: ./app-despacho
+          context: ./front_despacho
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/app-despacho:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/front_despacho:latest
 
   build-msv-despacho:
     name: Build msv-despacho
@@ -38,16 +38,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Maven build
-        run: mvn clean package -DskipTests -f msv-despacho/pom.xml
+        run: mvn clean package -DskipTests -f back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO/pom.xml
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
-          context: ./msv-despacho
+          context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/msv-despacho:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/back-despachos:latest
 
   build-msv-ventas:
     name: Build msv-ventas
@@ -59,16 +59,16 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Maven build
-        run: mvn clean package -DskipTests -f msv-ventas/pom.xml
+        run: mvn clean package -DskipTests -f back-Ventas_SpringBoot/Springboot-API-REST/pom.xml
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
-          context: ./msv-ventas
+          context: ./back-Ventas_SpringBoot/Springboot-API-REST
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/msv-ventas:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/back-ventas:latest
 
   # ─────────────────────────────────────────
   # JOB 2: Deploy a EC2 Pública (Frontend)
@@ -101,14 +101,14 @@ jobs:
           script: |
             cd /app
             export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-despacho:latest
-            docker stop app-despacho || true
-            docker rm app-despacho || true
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/front_despacho:latest
+            docker stop front_despacho || true
+            docker rm front_despacho || true
             docker run -d \
-              --name app-despacho \
+              --name front_despacho \
               --restart always \
-              -p 80:3000 \
-              ${{ secrets.DOCKERHUB_USERNAME }}/app-despacho:latest
+              -p 80:80 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/front_despacho:latest
 
   # ─────────────────────────────────────────
   # JOB 3: Deploy a EC2 Privada (MSVs + DBs)
@@ -145,7 +145,7 @@ jobs:
               "cd /app",
               "echo DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }} > .env",
               "echo DB_ROOT_PASSWORD=${{ secrets.DB_ROOT_PASSWORD }} >> .env",
-              "docker-compose -f docker-compose.prod.yml pull msv-despacho msv-ventas",
+              "docker-compose -f docker-compose.prod.yml pull back-despachos back-ventas",
               "docker-compose -f docker-compose.prod.yml up -d"
             ]' \
             --region ${{ secrets.AWS_REGION }} \

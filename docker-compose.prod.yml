@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db-ventas:
+    image: mysql:8.0
+    container_name: prod-db-ventas
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: dev_db_ventas
+    networks:
+      - prod-network
+
+  db-despachos:
+    image: mysql:8.0
+    container_name: prod-db-despachos
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: dev_db_despachos
+    networks:
+      - prod-network
+
+  back-ventas:
+    image: ${DOCKERHUB_USERNAME}/back-ventas:latest
+    container_name: prod-back-ventas
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_ENDPOINT=db-ventas
+      - DB_PORT=3306
+      - DB_NAME=dev_db_ventas
+      - DB_USERNAME=root
+      - DB_PASSWORD=${DB_ROOT_PASSWORD}
+    depends_on:
+      - db-ventas
+    networks:
+      - prod-network
+
+  back-despachos:
+    image: ${DOCKERHUB_USERNAME}/back-despachos:latest
+    container_name: prod-back-despachos
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_ENDPOINT=db-despachos
+      - DB_PORT=3306
+      - DB_NAME=dev_db_despachos
+      - DB_USERNAME=root
+      - DB_PASSWORD=${DB_ROOT_PASSWORD}
+    depends_on:
+      - db-despachos
+    networks:
+      - prod-network
+
+networks:
+  prod-network:
+    driver: bridge

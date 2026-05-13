@@ -15,5 +15,5 @@ USER spring:spring
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE ${BACKEND_DESPACHOS_PORT}
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]
