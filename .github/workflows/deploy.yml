@@ -1,0 +1,152 @@
+name: Deploy a Produccion
+
+on:
+  push:
+    branches: [produccion]
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+jobs:
+  # ─────────────────────────────────────────
+  # JOB 1: Build y Push de las 3 imágenes
+  # (corren en paralelo)
+  # ─────────────────────────────────────────
+
+  build-frontend:
+    name: Build app-despacho
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./app-despacho
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/app-despacho:latest
+
+  build-msv-despacho:
+    name: Build msv-despacho
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Maven build
+        run: mvn clean package -DskipTests -f msv-despacho/pom.xml
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./msv-despacho
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/msv-despacho:latest
+
+  build-msv-ventas:
+    name: Build msv-ventas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Maven build
+        run: mvn clean package -DskipTests -f msv-ventas/pom.xml
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./msv-ventas
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/msv-ventas:latest
+
+  # ─────────────────────────────────────────
+  # JOB 2: Deploy a EC2 Pública (Frontend)
+  # Espera que el build del frontend termine
+  # ─────────────────────────────────────────
+
+  deploy-public:
+    name: Deploy Frontend (EC2 Pública)
+    needs: build-frontend        # ← espera solo su build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # necesario para copiar el compose
+
+      - name: Copiar docker-compose al servidor
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/app"
+
+      - name: Deploy en EC2 pública
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_PUBLIC_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          envs: DOCKERHUB_USERNAME
+          script: |
+            cd /app
+            export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/app-despacho:latest
+            docker stop app-despacho || true
+            docker rm app-despacho || true
+            docker run -d \
+              --name app-despacho \
+              --restart always \
+              -p 80:3000 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/app-despacho:latest
+
+  # ─────────────────────────────────────────
+  # JOB 3: Deploy a EC2 Privada (MSVs + DBs)
+  # Espera que AMBOS microservicios terminen
+  # ─────────────────────────────────────────
+
+  deploy-private:
+    name: Deploy MSVs + DB (EC2 Privada)
+    needs: [build-msv-despacho, build-msv-ventas]   # ← espera ambos builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Copiar docker-compose via SSM (S3 intermedio)
+        run: |
+          # Subir el compose a S3 temporal
+          aws s3 cp docker-compose.prod.yml s3://${{ secrets.S3_TEMP_BUCKET }}/docker-compose.prod.yml
+
+      - name: Deploy en EC2 privada via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_PRIVATE_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='[
+              "aws s3 cp s3://${{ secrets.S3_TEMP_BUCKET }}/docker-compose.prod.yml /app/docker-compose.prod.yml",
+              "cd /app",
+              "echo DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }} > .env",
+              "echo DB_USER=${{ secrets.DB_USER }} >> .env",
+              "echo DB_PASS=${{ secrets.DB_PASS }} >> .env",
+              "docker-compose -f docker-compose.prod.yml pull msv-despacho msv-ventas",
+              "docker-compose -f docker-compose.prod.yml up -d"
+            ]' \
+            --region ${{ secrets.AWS_REGION }} \
+            --output text
