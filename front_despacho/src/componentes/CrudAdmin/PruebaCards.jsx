@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ImTruck } from "react-icons/im";
 import { CardComponent } from "./CardComponent";
 import { TableCompras } from "./TableCompras";
 import { TableDespachos } from "./TableDespachos";
@@ -10,7 +11,7 @@ export const PruebaCards = () => {
   return (
     <section>
       <div className="flex justify-center">
-        <CardComponent
+        <CardComponent image={<ImTruck />}
           title="Consultar Ordenes de compra "
           description="Revisa las últimas oc realizadas para generar su despacho"
           buttonText="Consultar"
