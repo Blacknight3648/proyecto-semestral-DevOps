@@ -75,3 +75,5 @@ Para que el despliegue funcione, el repositorio de GitHub debe tener configurado
 *   `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: Para interactuar con S3 y SSM.
 *   `EC2_PRIVATE_INSTANCE_ID`: El ID de la instancia privada en AWS.
 *   `DB_ROOT_PASSWORD`: Contraseña maestra para las bases de datos MySQL.
+
+aaa
