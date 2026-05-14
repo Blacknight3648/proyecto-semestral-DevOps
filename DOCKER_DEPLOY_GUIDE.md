@@ -76,4 +76,4 @@ Para que el despliegue funcione, el repositorio de GitHub debe tener configurado
 *   `EC2_PRIVATE_INSTANCE_ID`: El ID de la instancia privada en AWS.
 *   `DB_ROOT_PASSWORD`: Contraseña maestra para las bases de datos MySQL.
 
-aaa
+
